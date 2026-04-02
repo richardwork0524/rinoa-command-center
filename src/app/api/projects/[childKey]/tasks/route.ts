@@ -7,7 +7,7 @@ export async function POST(
 ) {
   const { childKey } = await params;
   const body = await request.json();
-  const { text, bucket } = body;
+  const { text, bucket, priority, is_owner_action, parent_task_id } = body;
 
   if (!text || typeof text !== "string" || !text.trim()) {
     return NextResponse.json(
@@ -24,10 +24,31 @@ export async function POST(
     );
   }
 
+  // Validate optional priority
+  if (priority !== undefined && priority !== null) {
+    const validPriorities = ["P0", "P1", "P2"];
+    if (!validPriorities.includes(priority)) {
+      return NextResponse.json(
+        { error: { code: "400", type: "validation_error", message: "Invalid priority value" } },
+        { status: 400 }
+      );
+    }
+  }
+
   try {
+    const insertData: Record<string, unknown> = {
+      project_key: childKey,
+      text: text.trim(),
+      bucket,
+    };
+
+    if (priority) insertData.priority = priority;
+    if (is_owner_action === true) insertData.is_owner_action = true;
+    if (parent_task_id) insertData.parent_task_id = parent_task_id;
+
     const { data, error } = await supabase
       .from("rcc_tasks")
-      .insert({ project_key: childKey, text: text.trim(), bucket })
+      .insert(insertData)
       .select()
       .single();
 

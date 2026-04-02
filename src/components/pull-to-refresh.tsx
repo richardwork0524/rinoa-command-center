@@ -66,7 +66,7 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
           style={{ height: pullDistance }}
         >
           <div
-            className={`w-6 h-6 border-2 border-primary border-t-transparent rounded-full ${
+            className={`w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full ${
               refreshing ? "animate-spin" : ""
             }`}
             style={{

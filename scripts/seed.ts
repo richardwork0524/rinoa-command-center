@@ -52,6 +52,8 @@ interface TaskItem {
   bucket: string;
   completed: boolean;
   sort_order: number;
+  priority: string | null;
+  is_owner_action: boolean;
 }
 
 function parseTasks(md: string): TaskItem[] {
@@ -70,15 +72,74 @@ function parseTasks(md: string): TaskItem[] {
 
     const taskMatch = trimmed.match(/^-\s*\[([ xX])\]\s*(.+)/);
     if (taskMatch) {
+      let taskText = taskMatch[2].trim();
+      const completed = taskMatch[1].toLowerCase() === "x";
+
+      // Detect owner-action markers
+      let isOwnerAction = false;
+      if (taskText.includes("⚡") || taskText.includes("(owner-action)")) {
+        isOwnerAction = true;
+        taskText = taskText.replace(/⚡/g, "").replace(/\(owner-action\)/gi, "").trim();
+      }
+
+      // Detect priority markers
+      let priority: string | null = null;
+      const priorityMatch = taskText.match(/\b(P[012])\b/);
+      if (priorityMatch) {
+        priority = priorityMatch[1];
+      }
+
       tasks.push({
-        text: taskMatch[2].trim(),
+        text: taskText,
         bucket: currentBucket,
-        completed: taskMatch[1].toLowerCase() === "x",
+        completed,
         sort_order: sortOrder++,
+        priority,
+        is_owner_action: isOwnerAction,
       });
     }
   }
   return tasks;
+}
+
+interface SessionLogItem {
+  session_date: string;
+  surface: string;
+  title: string;
+  summary: string | null;
+}
+
+function parseSessionLog(filename: string, content: string): SessionLogItem | null {
+  // Extract date from filename prefix (YYYY-MM-DD)
+  const dateMatch = filename.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (!dateMatch) return null;
+  const sessionDate = dateMatch[1];
+
+  // Extract surface from "Surface: Chat|Code|Cowork" line
+  let surface = "CHAT"; // default
+  const surfaceMatch = content.match(/Surface:\s*(Chat|Code|Cowork)/i);
+  if (surfaceMatch) {
+    surface = surfaceMatch[1].toUpperCase();
+  }
+
+  // Extract title from first # heading
+  let title = filename.replace(/\.md$/, "");
+  const titleMatch = content.match(/^#\s+(.+)/m);
+  if (titleMatch) {
+    title = titleMatch[1].trim();
+  }
+
+  // Extract summary from ## Summary section (first paragraph)
+  let summary: string | null = null;
+  const summaryMatch = content.match(/^##\s*Summary\s*\n([\s\S]*?)(?=\n##|\n$)/im);
+  if (summaryMatch) {
+    const rawSummary = summaryMatch[1].trim();
+    // Take the first paragraph only
+    const firstParagraph = rawSummary.split("\n\n")[0]?.trim();
+    if (firstParagraph) summary = firstParagraph;
+  }
+
+  return { session_date: sessionDate, surface, title, summary };
 }
 
 function readFileIfExists(filePath: string): string | null {
@@ -96,10 +157,14 @@ async function seed() {
   const entries = parseHierarchy(csv);
   console.log(`Found ${entries.length} projects`);
 
-  // Clear existing data
-  console.log("Clearing existing rcc_ data...");
-  await supabase.from("rcc_tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-  await supabase.from("rcc_projects").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  // TRUNCATE existing data (order matters: children first due to FK constraints)
+  console.log("Truncating existing rcc_ data...");
+  const { error: truncLogErr } = await supabase.from("rcc_session_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (truncLogErr) console.error("  Truncate session_logs:", truncLogErr.message);
+  const { error: truncTaskErr } = await supabase.from("rcc_tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (truncTaskErr) console.error("  Truncate tasks:", truncTaskErr.message);
+  const { error: truncProjErr } = await supabase.from("rcc_projects").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (truncProjErr) console.error("  Truncate projects:", truncProjErr.message);
 
   // Insert projects
   console.log("Inserting projects...");
@@ -148,6 +213,8 @@ async function seed() {
       bucket: t.bucket,
       completed: t.completed,
       sort_order: t.sort_order,
+      priority: t.priority,
+      is_owner_action: t.is_owner_action,
     }));
 
     const { error } = await supabase.from("rcc_tasks").insert(rows);
@@ -159,7 +226,64 @@ async function seed() {
     }
   }
 
-  console.log(`\nDone! Inserted ${entries.length} projects, ${totalTasks} tasks.`);
+  // Insert session logs
+  console.log("\nInserting session logs...");
+  let totalLogs = 0;
+  for (const entry of entries) {
+    const sessionDir = path.join(RINOA_ROOT, entry.rinoa_path, "session-logs");
+    let files: string[] = [];
+    try {
+      files = fs.readdirSync(sessionDir).filter((f) => f.endsWith(".md"));
+    } catch {
+      // session-logs dir may not exist for this project
+      continue;
+    }
+
+    if (files.length === 0) continue;
+
+    const logRows: Array<{
+      project_key: string;
+      session_date: string;
+      surface: string;
+      title: string;
+      summary: string | null;
+    }> = [];
+
+    for (const file of files) {
+      const filePath = path.join(sessionDir, file);
+      const content = readFileIfExists(filePath);
+      if (!content) continue;
+
+      const parsed = parseSessionLog(file, content);
+      if (!parsed) continue;
+
+      logRows.push({
+        project_key: entry.child_key,
+        session_date: parsed.session_date,
+        surface: parsed.surface,
+        title: parsed.title,
+        summary: parsed.summary,
+      });
+    }
+
+    if (logRows.length === 0) continue;
+
+    // Insert in batches of 50 to avoid payload limits
+    const batchSize = 50;
+    for (let i = 0; i < logRows.length; i += batchSize) {
+      const batch = logRows.slice(i, i + batchSize);
+      const { error } = await supabase.from("rcc_session_logs").insert(batch);
+      if (error) {
+        console.error(`  Error inserting session logs for ${entry.child_key}:`, error.message);
+        break;
+      }
+    }
+
+    console.log(`  + ${entry.display_name}: ${logRows.length} session logs`);
+    totalLogs += logRows.length;
+  }
+
+  console.log(`\nDone! Inserted ${entries.length} projects, ${totalTasks} tasks, ${totalLogs} session logs.`);
 }
 
 seed().catch(console.error);

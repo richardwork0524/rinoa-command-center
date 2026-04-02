@@ -1,11 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
+import { AppShell } from "@/components/app-shell";
 
 export const metadata: Metadata = {
   title: "Rinoa Command Center",
@@ -17,7 +12,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#0D1B2A",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({
@@ -26,9 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`}>
-      <body className="min-h-full flex flex-col font-[family-name:var(--font-inter)] antialiased">
-        {children}
+    <html lang="en" className="h-full">
+      <body className="min-h-full flex flex-col antialiased" style={{ fontFamily: "-apple-system, 'SF Pro Display', system-ui, sans-serif" }}>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
