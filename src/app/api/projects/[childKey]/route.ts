@@ -9,6 +9,7 @@ interface TaskRow {
   priority: string | null;
   is_owner_action: boolean | null;
   parent_task_id: string | null;
+  task_code: string | null;
   sort_order: number | null;
   created_at: string;
 }
@@ -21,6 +22,7 @@ interface NestedTask {
   priority: string | null;
   is_owner_action: boolean;
   parent_task_id: string | null;
+  task_code: string | null;
   sub_tasks: NestedTask[];
 }
 
@@ -38,6 +40,7 @@ function nestTasks(tasks: TaskRow[]): NestedTask[] {
       priority: t.priority || null,
       is_owner_action: t.is_owner_action || false,
       parent_task_id: t.parent_task_id || null,
+      task_code: t.task_code || null,
       sub_tasks: [],
     });
   }

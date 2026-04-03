@@ -20,6 +20,7 @@ interface NestedTask {
   priority: string | null;
   is_owner_action: boolean;
   parent_task_id: string | null;
+  task_code: string | null;
   sub_tasks: NestedTask[];
 }
 
@@ -468,6 +469,9 @@ function TaskRow({
             }`}
             onDoubleClick={() => { if (!task.completed) { setEditText(task.text); setEditing(true); } }}
           >
+            {task.task_code && (
+              <span className="text-[11px] font-mono text-[var(--accent)] mr-1.5">{task.task_code}</span>
+            )}
             {task.text}
           </span>
         )}
