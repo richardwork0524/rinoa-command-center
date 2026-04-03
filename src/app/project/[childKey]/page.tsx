@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Toast } from "@/components/toast";
 import { ProjectCard } from "@/components/project-card";
 import { SessionLogList } from "@/components/session-log-list";
+import { EOSBanner } from "@/components/eos-banner";
 
 interface NestedTask {
   id: string;
@@ -176,6 +177,24 @@ export default function ProjectDetailPage() {
           <EmptyState message="Project not found." />
         ) : project ? (
           <>
+            {/* Context EOS — latest session for this entity */}
+            {project.session_logs && project.session_logs.length > 0 && (
+              <div className="px-4 pt-3">
+                <EOSBanner
+                  eos={{
+                    id: project.session_logs[0].id,
+                    project_key: project.child_key,
+                    display_name: project.display_name,
+                    session_date: project.session_logs[0].session_date,
+                    surface: project.session_logs[0].surface || 'CHAT',
+                    title: project.session_logs[0].title || 'Session',
+                    summary: project.session_logs[0].summary,
+                  }}
+                  label="Last EOS"
+                />
+              </div>
+            )}
+
             {/* Detailed project header card */}
             <div className="px-4 pt-3">
               <ProjectCard

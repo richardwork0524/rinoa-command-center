@@ -19,7 +19,7 @@ export async function PATCH(
 
   try {
     const { data, error } = await supabase
-      .from("rcc_tasks")
+      .from("angelo_tasks")
       .update({ bucket: target_bucket })
       .eq("id", taskId)
       .select()

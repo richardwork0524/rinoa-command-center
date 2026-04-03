@@ -3,8 +3,8 @@ import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 
 export const metadata: Metadata = {
-  title: "Rinoa Command Center",
-  description: "Mobile command center for Rinoa-OS on Google Drive",
+  title: "Angelo",
+  description: "Mobile companion for Rinoa-OS",
 };
 
 export const viewport: Viewport = {

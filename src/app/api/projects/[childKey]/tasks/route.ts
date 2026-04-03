@@ -47,7 +47,7 @@ export async function POST(
     if (parent_task_id) insertData.parent_task_id = parent_task_id;
 
     const { data, error } = await supabase
-      .from("rcc_tasks")
+      .from("angelo_tasks")
       .insert(insertData)
       .select()
       .single();

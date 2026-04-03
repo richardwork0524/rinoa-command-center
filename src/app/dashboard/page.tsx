@@ -12,13 +12,24 @@ import { Breadcrumb, BreadcrumbSegment } from "@/components/breadcrumb";
 import { ProjectCard, ProjectCardData } from "@/components/project-card";
 import { Fab } from "@/components/fab";
 import { QuickCaptureSheet } from "@/components/quick-capture-sheet";
+import { EOSBanner } from "@/components/eos-banner";
 import { buildTree, getAncestors, getChildren } from "@/lib/tree";
 import type { ProjectNode } from "@/lib/tree";
+
+interface EOSData {
+  id: string;
+  project_key: string | null;
+  display_name: string | null;
+  session_date: string;
+  surface: string;
+  title: string;
+  summary: string | null;
+}
 
 function DashboardSkeleton() {
   return (
     <div className="flex flex-col min-h-screen bg-[var(--bg)]">
-      <StickyHeader title="Rinoa" />
+      <StickyHeader title="Angelo" />
       <div className="px-4 py-3 space-y-3">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="rounded-[var(--r)] bg-[var(--card)] p-4 space-y-3 animate-pulse">
@@ -57,14 +68,22 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [eos, setEos] = useState<EOSData | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
       setError(null);
-      const res = await fetch("/api/projects");
-      if (!res.ok) throw new Error("Failed to load");
-      const data = await res.json();
+      const [projRes, eosRes] = await Promise.all([
+        fetch("/api/projects"),
+        fetch("/api/eos?scope=global"),
+      ]);
+      if (!projRes.ok) throw new Error("Failed to load");
+      const data = await projRes.json();
       setProjects(data.projects);
+      if (eosRes.ok) {
+        const eosData = await eosRes.json();
+        setEos(eosData.eos);
+      }
     } catch {
       setError("Failed to load projects. Pull to retry.");
     } finally {
@@ -122,13 +141,19 @@ function DashboardContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--bg)]">
-      <StickyHeader title="Rinoa" />
+      <StickyHeader title="Angelo" />
 
       {leafProjects.length > 0 && (
         <TaskAddBar
           projects={leafProjects.map((p) => ({ child_key: p.child_key, display_name: p.display_name }))}
           onSubmit={handleAddTask}
         />
+      )}
+
+      {parentKey === "root" && eos && (
+        <div className="px-4 pt-3">
+          <EOSBanner eos={eos} />
+        </div>
       )}
 
       {parentKey !== "root" && <Breadcrumb segments={breadcrumbs} />}

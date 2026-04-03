@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 export async function GET() {
   try {
     const { data: projects, error: projError } = await supabase
-      .from("rcc_projects")
+      .from("angelo_projects")
       .select("*")
       .order("display_name");
 
@@ -12,7 +12,7 @@ export async function GET() {
 
     // Get task counts per project (open + completed)
     const { data: taskCounts, error: taskError } = await supabase
-      .from("rcc_tasks")
+      .from("angelo_tasks")
       .select("project_key, bucket, completed");
 
     if (taskError) throw taskError;

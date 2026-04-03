@@ -63,7 +63,7 @@ export async function GET(
 
   try {
     const { data: project, error: projError } = await supabase
-      .from("rcc_projects")
+      .from("angelo_projects")
       .select("*")
       .eq("child_key", childKey)
       .single();
@@ -76,7 +76,7 @@ export async function GET(
     }
 
     const { data: tasks, error: taskError } = await supabase
-      .from("rcc_tasks")
+      .from("angelo_tasks")
       .select("*")
       .eq("project_key", childKey)
       .order("sort_order")
@@ -98,7 +98,7 @@ export async function GET(
     let session_logs: { id: string; session_date: string; title: string | null; surface: string | null; summary: string | null }[] = [];
     try {
       const { data: logs } = await supabase
-        .from("rcc_session_logs")
+        .from("angelo_session_logs")
         .select("id, session_date, title, surface, summary")
         .eq("project_key", childKey)
         .order("session_date", { ascending: false })

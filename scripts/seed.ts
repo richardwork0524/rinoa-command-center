@@ -158,12 +158,12 @@ async function seed() {
   console.log(`Found ${entries.length} projects`);
 
   // TRUNCATE existing data (order matters: children first due to FK constraints)
-  console.log("Truncating existing rcc_ data...");
-  const { error: truncLogErr } = await supabase.from("rcc_session_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  console.log("Truncating existing angelo_ data...");
+  const { error: truncLogErr } = await supabase.from("angelo_session_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   if (truncLogErr) console.error("  Truncate session_logs:", truncLogErr.message);
-  const { error: truncTaskErr } = await supabase.from("rcc_tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const { error: truncTaskErr } = await supabase.from("angelo_tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   if (truncTaskErr) console.error("  Truncate tasks:", truncTaskErr.message);
-  const { error: truncProjErr } = await supabase.from("rcc_projects").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const { error: truncProjErr } = await supabase.from("angelo_projects").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   if (truncProjErr) console.error("  Truncate projects:", truncProjErr.message);
 
   // Insert projects
@@ -177,7 +177,7 @@ async function seed() {
       ? (Date.now() - new Date(summary.last_session_date).getTime()) / (1000 * 60 * 60 * 24) > 7
       : false;
 
-    const { error } = await supabase.from("rcc_projects").insert({
+    const { error } = await supabase.from("angelo_projects").insert({
       child_key: entry.child_key,
       parent_key: entry.parent_key,
       rinoa_path: entry.rinoa_path,
@@ -217,7 +217,7 @@ async function seed() {
       is_owner_action: t.is_owner_action,
     }));
 
-    const { error } = await supabase.from("rcc_tasks").insert(rows);
+    const { error } = await supabase.from("angelo_tasks").insert(rows);
     if (error) {
       console.error(`  Error inserting tasks for ${entry.child_key}:`, error.message);
     } else {
@@ -272,7 +272,7 @@ async function seed() {
     const batchSize = 50;
     for (let i = 0; i < logRows.length; i += batchSize) {
       const batch = logRows.slice(i, i + batchSize);
-      const { error } = await supabase.from("rcc_session_logs").insert(batch);
+      const { error } = await supabase.from("angelo_session_logs").insert(batch);
       if (error) {
         console.error(`  Error inserting session logs for ${entry.child_key}:`, error.message);
         break;
